@@ -1,0 +1,96 @@
+﻿<Window x:Class="AutoUpdate.MainNotification"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:AutoUpdate"
+        mc:Ignorable="d"
+        Title="MainNotification" 
+        Height="332" 
+        Width="646"
+        AllowsTransparency="True"
+        Background="{x:Null}"
+        ForceCursor="True"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None">
+    <Grid>
+        <Grid.Background>
+            <ImageBrush ImageSource="Resources/FromNotification.png" Stretch="UniformToFill" />
+        </Grid.Background>
+        <Label x:Name="Notification_LB" HorizontalAlignment="Left" Margin="94,123,0,0" VerticalAlignment="Top" Height="69" Width="454" FontSize="14" FontWeight="Bold" Foreground="#FFECBE5B" HorizontalContentAlignment="Center">
+            <TextBlock x:Name="Notification_TextBlock" HorizontalAlignment="Left" VerticalAlignment="Top" Height="Auto" Width="444" FontSize="13" FontWeight="SemiBold" Foreground="#FFE2C483" TextWrapping="Wrap" TextAlignment="Center">
+
+            </TextBlock>
+        </Label>
+        <Button
+            x:Name="btnClose"
+            Width="21"
+            Height="21"
+            Margin="537,87,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            BorderThickness="0"
+            Click="BtnClose_Click"
+            Cursor="Hand"
+            IsHitTestVisible="True"
+            ToolTip="Tắt AutoUpdate."
+            ToolTipService.ShowDuration="5000">
+            <Button.Template>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <StackPanel>
+                        <Image
+                            x:Name="btnClose2"
+                            Source="Resources/btn_x_hover.png"
+                            Stretch="UniformToFill"
+                            Visibility="Collapsed" />
+                        <Image
+                            x:Name="btnClose1"
+                            Source="Resources/btn_x.png"
+                            Stretch="UniformToFill"
+                            Visibility="Visible" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter TargetName="btnClose2" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="btnClose1" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+        <Button
+            x:Name="btn_ok"
+            Width="92"
+            Height="28"
+            Margin="276,208,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Click="btn_ok_MouseLeftButtonDown"
+            ToolTip="Thử tải lại bản cập nhật mới."
+            ToolTipService.ShowDuration="5000">
+            <Button.Template>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <StackPanel>
+                        <Image
+                            x:Name="btn_ok2"
+                            Source="Resources/btn_ok_hover.png"
+                            Stretch="UniformToFill"
+                            Visibility="Collapsed" />
+                        <Image
+                            x:Name="btn_ok1"
+                            Source="Resources/btn_ok.png"
+                            Stretch="UniformToFill"
+                            Visibility="Visible" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter TargetName="btn_ok2" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="btn_ok1" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+    </Grid>
+</Window>

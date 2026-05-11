@@ -1,0 +1,359 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Costura.Fody.5.7.0\build\Costura.Fody.props" Condition="Exists('..\packages\Costura.Fody.5.7.0\build\Costura.Fody.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B2B4393C-EBFE-4D56-8B66-5D3F55321D44}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>AutoUpdate</RootNamespace>
+    <AssemblyName>AutoUpdate</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <CreateDesktopShortcut>true</CreateDesktopShortcut>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Ionic.Zip, Version=1.9.1.8, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
+      <HintPath>..\packages\Ionic.Zip.1.9.1.8\lib\Ionic.Zip.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WpfAnimatedGif, Version=2.0.0.0, Culture=neutral, PublicKeyToken=9e7cd3b544a090dc, processorArchitecture=MSIL">
+      <HintPath>..\packages\WpfAnimatedGif.2.0.2\lib\net40\WpfAnimatedGif.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="AutoClosingMessageBox.cs" />
+    <Compile Include="Config.cs" />
+    <Compile Include="IniFile.cs" />
+    <Compile Include="MainNotification.xaml.cs">
+      <DependentUpon>MainNotification.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="SecureStringManager.cs" />
+    <Compile Include="Utils\Extensions.cs" />
+    <Compile Include="Utils\Win32Api.cs" />
+    <Page Include="GameConfig.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MainNotification.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GameConfig.xaml.cs">
+      <DependentUpon>GameConfig.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="app.manifest" />
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Resource Include="Resources\segoeui.ttf" />
+    <Resource Include="Resources\segoeuib.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\blink.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_com.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_com_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_guide.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_guide_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_pk.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_pk_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_recharge.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_recharge_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\nav_btn.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\nav_btn_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="IWshRuntimeLibrary">
+      <Guid>{F935DC20-1CF0-11D0-ADB9-00C04FD58A0B}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\slide3.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\slide4.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\slide5.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\slide1.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\slide2.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_fanpage.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_fanpage_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_nhomfacebook.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_nhomfacebook_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_nhomzalo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_nhomzalo_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="kiemthe.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\kiemthe.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\outside_rotate.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\test.gif" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_congdong.png" />
+    <Resource Include="Resources\btn_congdong_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_updating.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_auto.png" />
+    <Resource Include="Resources\btn_auto_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\khungloadingprogress.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_login.png" />
+    <Resource Include="Resources\btn_login_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\inside_rotate.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_thulai.png" />
+    <Resource Include="Resources\btn_thulai_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_tuychon.png" />
+    <Resource Include="Resources\btn_tuychon_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_thoat.png" />
+    <Resource Include="Resources\btn_thoat_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\FromNotification.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_ok.png" />
+    <Resource Include="Resources\btn_ok_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\config_frame.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_locate.png" />
+    <Resource Include="Resources\btn_locate_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_checked.png" />
+    <Resource Include="Resources\btn_uncheck.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_2d.png" />
+    <Resource Include="Resources\btn_3d.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_confirm.png" />
+    <Resource Include="Resources\btn_confirm_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_huy.png" />
+    <Resource Include="Resources\btn_huy_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\line-hover.png" />
+    <Resource Include="Resources\linebg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_x.png" />
+    <Resource Include="Resources\btn_x_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_minimizer.png" />
+    <Resource Include="Resources\btn_minimizer_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_home.png" />
+    <Resource Include="Resources\btn_home_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_taikhoan.png" />
+    <Resource Include="Resources\btn_taikhoan_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_hotro.png" />
+    <Resource Include="Resources\btn_hotro_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\btn_hoinhom.png" />
+    <Resource Include="Resources\btn_hoinhom_hover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\progressbar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\Background.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\icon.ico" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\Fody.6.6.0\build\Fody.targets" Condition="Exists('..\packages\Fody.6.6.0\build\Fody.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Fody.6.6.0\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.6.6.0\build\Fody.targets'))" />
+    <Error Condition="!Exists('..\packages\Costura.Fody.5.7.0\build\Costura.Fody.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Costura.Fody.5.7.0\build\Costura.Fody.props'))" />
+    <Error Condition="!Exists('..\packages\Costura.Fody.5.7.0\build\Costura.Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Costura.Fody.5.7.0\build\Costura.Fody.targets'))" />
+  </Target>
+  <Import Project="..\packages\Costura.Fody.5.7.0\build\Costura.Fody.targets" Condition="Exists('..\packages\Costura.Fody.5.7.0\build\Costura.Fody.targets')" />
+</Project>
