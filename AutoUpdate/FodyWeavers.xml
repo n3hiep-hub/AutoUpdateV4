@@ -1,3 +1,17 @@
-﻿<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
-  <Costura />
+<?xml version="1.0" encoding="utf-8" ?>
+<Weavers xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="FodyWeavers.xsd">
+  <!--
+    FIX #2: Cấu hình Costura cho .NET 4.0 + Costura.Fody 5.7.0
+
+    CÁC OPTION BỊ LỖI trên .NET 4.0:
+      - CreateTemporaryAssemblies="true"  -> crash: "Value cannot be null. Parameter name: method"
+      - LoadAtModuleInit="false"          -> crash tuong tu
+
+    CHI DUNG các option tuong thich:
+      - DisableCompression="false"        -> giu nen, giam kich thuoc file
+      - IgnoreSatelliteAssemblies="true"  -> bo qua resource DLL, nho hon
+  -->
+  <Costura
+    DisableCompression="false"
+    IgnoreSatelliteAssemblies="true" />
 </Weavers>
