@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Windows;
@@ -12,19 +11,28 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Timers;
 using System.Net;
+using System.Net.Security;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Xml;
 using Microsoft.Win32;
-using IWshRuntimeLibrary;
 using Ini;
 using Ionic.Zip;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.IO;
+// Không dùng "using IWshRuntimeLibrary" để tránh conflict File với System.IO.File
+// Dùng fully-qualified IWshRuntimeLibrary.WshShell và IWshRuntimeLibrary.IWshShortcut thay thế
+// Alias ngắn gọn để code dễ đọc hơn
+using SysFile = System.IO.File;
+using SysDirectory = System.IO.Directory;
+using SysPath = System.IO.Path;
+using SysStream = System.IO.FileStream;
+using SysStreamReader = System.IO.StreamReader;
 
 namespace AutoUpdate
 {
-
     public partial class MainWindow : Window
     {
         private bool isMainWindowEnabled = true;
@@ -54,15 +62,23 @@ namespace AutoUpdate
         private long P;
         private long H;
         private long num2;
-        private long num6;
         private int percentvalue;
+
+        // =====================================================================
+        // FIX #5: Bỏ qua lỗi SSL certificate (hỗ trợ HTTPS)
+        // =====================================================================
+        private static bool ValidateServerCertificate(
+            object sender, X509Certificate certificate,
+            X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            return true; // Accept all certificates
+        }
+
         public void DownloadComplete(bool cancelled)
         {
-
             bool flagCancelled = !cancelled;
             if (flagCancelled)
             {
-
                 SetUpdateCompletedState();
                 GetDataConfig();
                 this.progressbar.Width = 536;
@@ -76,8 +92,8 @@ namespace AutoUpdate
                     this.lblThongTin.Content = "Vui lòng bấm vào nút [ĐĂNG NHẬP] để bắt đầu trò chơi.";
                     this.txtCurVer.Content = "Phiên bản hiện tại: " + this.n_Configs.Version;
                 }));
-                System.IO.File.Delete(AppDomain.CurrentDomain.BaseDirectory + "update.xml");
-                 Thread.Sleep(500);
+                SysFile.Delete(AppDomain.CurrentDomain.BaseDirectory + "update.xml");
+                Thread.Sleep(500);
                 this.btnConfig.IsEnabled = true;
                 if (!cancelled)
                 {
@@ -86,52 +102,49 @@ namespace AutoUpdate
                 }
             }
         }
+
         private bool isMouseOverButton = false;
         private void StartButtonRotations()
         {
             if (!isMouseOverButton)
             {
-
                 var insideAnimation = new DoubleAnimation
                 {
                     By = 360,
                     RepeatBehavior = RepeatBehavior.Forever,
                     Duration = TimeSpan.FromSeconds(1.5)
                 };
-
                 Inside.BeginAnimation(RotateTransform.AngleProperty, insideAnimation);
-
             }
         }
 
         private void StopButtonRotations()
         {
             Inside.BeginAnimation(RotateTransform.AngleProperty, null);
-
         }
+
         private void DelFolder()
         {
-            if (Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "settings"))
+            if (SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "settings"))
             {
                 string settings = (AppDomain.CurrentDomain.BaseDirectory + "settings");
-                Directory.Delete(settings, true);
+                SysDirectory.Delete(settings, true);
             }
-            if (Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "ui"))
+            if (SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "ui"))
             {
                 string ui = (AppDomain.CurrentDomain.BaseDirectory + "ui");
-                Directory.Delete(ui, true);
+                SysDirectory.Delete(ui, true);
             }
-            if (Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "UImage"))
+            if (SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "UImage"))
             {
                 string script = (AppDomain.CurrentDomain.BaseDirectory + "UImage");
-                Directory.Delete(script, true);
+                SysDirectory.Delete(script, true);
             }
-            if (Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "Image"))
+            if (SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "Image"))
             {
                 string script = (AppDomain.CurrentDomain.BaseDirectory + "Image");
-                Directory.Delete(script, true);
+                SysDirectory.Delete(script, true);
             }
-                
         }
 
         private void BtnLogin_MouseLeftButtonDown(object sender, RoutedEventArgs e)
@@ -140,10 +153,7 @@ namespace AutoUpdate
             {
                 new Thread(new ThreadStart(this.RunGame)).Start();
             }
-            catch
-            {
-
-            }
+            catch { }
         }
 
         private bool checkAuto()
@@ -158,12 +168,14 @@ namespace AutoUpdate
 
         [DllImport("user32.dll")]
         static extern int SetWindowText(IntPtr hWnd, string text);
+
         private void RunGame()
         {
-            string pathGame = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase) + "\\" + this.n_Configs.FileGame;
+            string pathGame = SysPath.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase)
+                + "\\" + this.n_Configs.FileGame;
             try
             {
-                   Process runGame = Process.Start(pathGame);
+                Process runGame = Process.Start(pathGame);
             }
             catch (Exception ex)
             {
@@ -173,13 +185,12 @@ namespace AutoUpdate
                     MainNotification mainNotification = new MainNotification(ex.Message + " Path: " + pathGame);
                     mainNotification.OkButtonClicked += (senderObj, args) =>
                     {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
+                        mainNotification.Close();
                         this.IsEnabled = true;
                     };
                     mainNotification.Show();
                 }));
                 Thread.Sleep(2000);
-
             }
         }
 
@@ -194,14 +205,12 @@ namespace AutoUpdate
                     MainNotification mainNotification = new MainNotification(e.Error.Message);
                     mainNotification.OkButtonClicked += (senderObj, args) =>
                     {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
-                          this.IsEnabled = true;
+                        mainNotification.Close();
+                        this.IsEnabled = true;
                     };
                     mainNotification.Show();
                 }));
                 Thread.Sleep(2000);
-
-
             }
             else
             {
@@ -220,17 +229,37 @@ namespace AutoUpdate
             percentwidth = 55;
             this.progresspercent_total.Width = percentwidth;
             this.progresspercent_now_file.Width = percentwidth;
-
         }
 
         public MainWindow()
         {
             InitializeComponent();
             checkAdmin();
-            //this.RunCMD("powershell -Command Add-MpPreference -ExclusionPath \"" + AppDomain.CurrentDomain.BaseDirectory + "\"", false, false, false);
+
+            // =====================================================================
+            // FIX #5: Cấu hình HTTPS/TLS trước khi làm bất cứ điều gì
+            // Dùng giá trị số vì .NET 4.0 chưa có enum Tls12/Tls11
+            // Tls   = 192, Tls11 = 768, Tls12 = 3072
+            // =====================================================================
+            ServicePointManager.SecurityProtocol =
+                (SecurityProtocolType)3072   // TLS 1.2
+                | (SecurityProtocolType)768  // TLS 1.1
+                | (SecurityProtocolType)192; // TLS 1.0
+            ServicePointManager.ServerCertificateValidationCallback =
+                new RemoteCertificateValidationCallback(ValidateServerCertificate);
+
+            // =====================================================================
+            // FIX #1: Thêm thư mục vào whitelist Windows Defender
+            // =====================================================================
+            AddDefenderExclusion();
 
             ni.Icon = AutoUpdate.Properties.Resources.vltk2;
-            ni.DoubleClick += delegate (object sender, EventArgs args) { Show(); WindowState = WindowState.Normal; ni.Visible = false; };
+            ni.DoubleClick += delegate (object sender, EventArgs args)
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                ni.Visible = false;
+            };
 
             this.MouseDown += new MouseButtonEventHandler(MainBgr_MouseDown);
             this.PreviewMouseDown += new MouseButtonEventHandler(MainBgr_PreviewMouseDown);
@@ -240,11 +269,10 @@ namespace AutoUpdate
             mutex = new Mutex(false, "Thông Báo AutoUpdate", out firstInstance);
             if (!firstInstance)
             {
-
                 MainNotification mainNotification = new MainNotification("AutoUpdate đang chạy!");
                 mainNotification.OkButtonClicked += (senderObj, args) =>
                 {
-                    mainNotification.Close(); // Đóng cửa sổ MainNotification
+                    mainNotification.Close();
                     Thread.Sleep(100);
                     this.Close();
                 };
@@ -255,8 +283,8 @@ namespace AutoUpdate
             {
                 Process[] processesByName = Process.GetProcessesByName("Game");
                 for (int gameproc = 0; gameproc < processesByName.Length; gameproc++)
-                    if (MessageBox.Show("Trò chơi đang chạy, bạn có muốn thoát game để cập nhật bản mới không?", "Thông Báo",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+                    if (MessageBox.Show("Trò chơi đang chạy, bạn có muốn thoát game để cập nhật bản mới không?",
+                        "Thông Báo", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
                     {
                         this.Close();
                     }
@@ -265,6 +293,7 @@ namespace AutoUpdate
                         processesByName[gameproc].Kill();
                     }
             }
+
             this.SetUpdatingState();
             this.progressbar.Width = 0;
             this.txtCurVer.Content = "Phiên bản hiện tại: ----";
@@ -299,25 +328,45 @@ namespace AutoUpdate
             this.DelFolder();
         }
 
+        // =====================================================================
+        // FIX #1: Thêm thư mục vào whitelist Windows Defender
+        // =====================================================================
+        private void AddDefenderExclusion()
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
+                // Chạy ngầm, không hiện cửa sổ
+                this.RunCMD(
+                    "powershell -Command \"Add-MpPreference -ExclusionPath '" + baseDir + "'\"",
+                    false, false, false
+                );
+            }
+            catch
+            {
+                // Bỏ qua nếu lỗi (ví dụ Defender bị tắt)
+            }
+        }
+
         public static bool IsAdministrator()
         {
             var identity = WindowsIdentity.GetCurrent();
             var principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
+
         private void checkAdmin()
         {
-            if (!IsAdministrator() == true)
+            if (!IsAdministrator())
             {
                 MainNotification mainNotification = new MainNotification("Hãy khởi chạy bằng quyền Admin!");
                 mainNotification.OkButtonClicked += (senderObj, args) =>
                 {
-                    mainNotification.Close(); // Đóng cửa sổ MainNotification
+                    mainNotification.Close();
                     Thread.Sleep(100);
                     this.Close();
                 };
                 mainNotification.Show();
-
             }
         }
 
@@ -328,17 +377,10 @@ namespace AutoUpdate
             processStartInfo.FileName = "cmd.exe";
             processStartInfo.CreateNoWindow = !ShowWindow;
             if (ShowWindow)
-            {
                 processStartInfo.WindowStyle = ProcessWindowStyle.Normal;
-            }
             else
-            {
                 processStartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            }
-            new Process
-            {
-                StartInfo = processStartInfo
-            }.Start();
+            new Process { StartInfo = processStartInfo }.Start();
         }
 
         private void GetDataConfig()
@@ -351,25 +393,24 @@ namespace AutoUpdate
         {
             this.SetUpdatingState();
             this.txtCurVer.Content = "Phiên bản hiện tại: " + this.n_Configs.Version;
-            
         }
 
         private void CheckUpdate()
         {
             string folderPathz = AppDomain.CurrentDomain.BaseDirectory + "\\temp";
 
-            if (Directory.Exists(folderPathz))
+            if (SysDirectory.Exists(folderPathz))
             {
                 try
                 {
-                    Directory.Delete(folderPathz, true);
+                    SysDirectory.Delete(folderPathz, true);
                 }
                 catch (Exception ex)
                 {
                     MainNotification mainNotification = new MainNotification("Lỗi khi xoá thư mục: " + ex.Message);
                     mainNotification.OkButtonClicked += (senderObj, args) =>
                     {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
+                        mainNotification.Close();
                         Thread.Sleep(100);
                         this.Close();
                     };
@@ -380,7 +421,9 @@ namespace AutoUpdate
             try
             {
                 WebClient webClient = new WebClient();
-                StreamReader streamReader = new StreamReader(webClient.OpenRead(n_Configs.ServerUpdate + "checkautoupdate.php?vlph=" + Guid.NewGuid().ToString()));
+                SysStreamReader streamReader = new SysStreamReader(
+                    webClient.OpenRead(n_Configs.ServerUpdate + "checkautoupdate.php?vlph=" + Guid.NewGuid().ToString())
+                );
                 this.md5onlineautoupdate = streamReader.ReadToEnd();
                 App.Current.Dispatcher.BeginInvoke((Action)(() =>
                 {
@@ -392,42 +435,62 @@ namespace AutoUpdate
                 {
                     string folderPath = AppDomain.CurrentDomain.BaseDirectory + "\\temp";
 
-                    if (!Directory.Exists(folderPath))
+                    if (!SysDirectory.Exists(folderPath))
                     {
                         try
                         {
-                            Directory.CreateDirectory(folderPath);
+                            SysDirectory.CreateDirectory(folderPath);
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine("Lỗi khi tạo thư mục: " + ex.Message);
                         }
                     }
-                    System.IO.File.Move(AppDomain.CurrentDomain.BaseDirectory + "\\AutoUpdate.exe", AppDomain.CurrentDomain.BaseDirectory + "\\temp\\AutoUpdate.exe");
-                   
+
                     App.Current.Dispatcher.BeginInvoke((Action)(() =>
                     {
                         this.lblTienTrinh.Content = "Đang tải về tập tin [AutoUpdate.exe]...";
                     }));
-                    webClient.DownloadFile(n_Configs.ServerUpdate + "files/AutoUpdate.exe", AppDomain.CurrentDomain.BaseDirectory + "\\AutoUpdate.exe");
+
+                    // =====================================================================
+                    // FIX #3: Dùng file trung gian thay vì ghi thẳng vào AutoUpdate.exe
+                    // =====================================================================
+                    string tempUpdateFile = folderPath + "\\AutoUpdate_new.exe";
+                    webClient.DownloadFile(n_Configs.ServerUpdate + "files/AutoUpdate.exe", tempUpdateFile);
+
                     ni.Visible = true;
-                    ni.ShowBalloonTip(1000, "Thông Báo", "Đã Cập Nhật Phiển Bản Mới AutoUpdate.Exe", System.Windows.Forms.ToolTipIcon.Info);
+                    ni.ShowBalloonTip(1000, "Thông Báo",
+                        "Đã tải về phiên bản mới AutoUpdate.Exe. Đang áp dụng...",
+                        System.Windows.Forms.ToolTipIcon.Info);
+
                     App.Current.Dispatcher.BeginInvoke((Action)(() =>
                     {
-                        this.lblTienTrinh.Content = "Cập nhật thành công tập tin [AutoUpdate.exe]...";
+                        this.lblTienTrinh.Content = "Đang áp dụng cập nhật [AutoUpdate.exe]...";
                     }));
+
+                    // Tạo batch script để thay thế file sau khi app đóng
+                    CreateUpdateBatch(tempUpdateFile);
                     Thread.Sleep(1000);
+
                     App.Current.Dispatcher.Invoke((Action)(() =>
                     {
-                        Process.Start(AppDomain.CurrentDomain.BaseDirectory + "\\AutoUpdate.exe");
+                        // Chạy batch thay thế file
+                        Process.Start(
+                            new ProcessStartInfo(
+                                AppDomain.CurrentDomain.BaseDirectory + "\\au_updater.bat"
+                            )
+                            {
+                                WindowStyle = ProcessWindowStyle.Hidden,
+                                CreateNoWindow = true
+                            }
+                        );
                     }));
-                    Environment.Exit(1);
+                    Environment.Exit(0);
                 }
                 else
                 {
                     new Thread(new ThreadStart(this.BatDauHoatDong)).Start();
                     new Thread(new ThreadStart(this.CreateShortcut)).Start();
-
                 }
             }
             catch (WebException ex2)
@@ -445,32 +508,58 @@ namespace AutoUpdate
             }
         }
 
+        // =====================================================================
+        // FIX #3: Tạo batch script thay thế AutoUpdate.exe
+        // =====================================================================
+        private void CreateUpdateBatch(string newExePath)
+        {
+            string currentExe = AppDomain.CurrentDomain.BaseDirectory + "\\AutoUpdate.exe";
+            string batchPath = AppDomain.CurrentDomain.BaseDirectory + "\\au_updater.bat";
+
+            string batchContent =
+                "@echo off\r\n" +
+                "timeout /t 2 /nobreak > nul\r\n" +
+                "move /y \"" + newExePath + "\" \"" + currentExe + "\"\r\n" +
+                "start \"\" \"" + currentExe + "\"\r\n" +
+                "del \"%~f0\"\r\n"; // Tự xóa batch sau khi chạy xong
+
+            SysFile.WriteAllText(batchPath, batchContent, Encoding.Default);
+        }
+
         private void BatDauHoatDong()
         {
-            
             new Thread(new ThreadStart(this.KiemTraUpdateXml)).Start();
         }
 
         private void Set16Bit()
         {
-            if (System.IO.File.Exists(AppDomain.CurrentDomain.BaseDirectory + "Game.exe"))
+            if (SysFile.Exists(AppDomain.CurrentDomain.BaseDirectory + "Game.exe"))
             {
-                var valueLC = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
-                var valueCU = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
+                var valueLC = Registry.CurrentUser.CreateSubKey(
+                    @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
+                var valueCU = Registry.LocalMachine.CreateSubKey(
+                    @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
                 if (valueCU != null)
                 {
-                    valueCU.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe", "~ RUNASADMIN 16BITCOLOR WIN8RTM");
-                    valueLC.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe", "~ RUNASADMIN 16BITCOLOR WIN8RTM");
+                    valueCU.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe",
+                        "~ RUNASADMIN 16BITCOLOR WIN8RTM");
+                    valueLC.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe",
+                        "~ RUNASADMIN 16BITCOLOR WIN8RTM");
                 }
                 else
                 {
-                    var resCU = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
-                    var resLC = Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
-                    resCU.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe", "~ RUNASADMIN 16BITCOLOR WIN8RTM");
-                    resLC.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe", "~ RUNASADMIN 16BITCOLOR WIN8RTM");
+                    var resCU = Registry.CurrentUser.CreateSubKey(
+                        @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
+                    var resLC = Registry.LocalMachine.CreateSubKey(
+                        @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers");
+                    resCU.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe",
+                        "~ RUNASADMIN 16BITCOLOR WIN8RTM");
+                    resLC.SetValue(AppDomain.CurrentDomain.BaseDirectory + "Game.exe",
+                        "~ RUNASADMIN 16BITCOLOR WIN8RTM");
                 }
             }
         }
+
         private bool isMouseOverButton_Progresbar = false;
         private void Start_Animation_ProgressBar()
         {
@@ -482,31 +571,27 @@ namespace AutoUpdate
                     RepeatBehavior = RepeatBehavior.Forever,
                     Duration = TimeSpan.FromSeconds(4)
                 };
-
                 Outside_progressbar.BeginAnimation(RotateTransform.AngleProperty, outsideAnimation);
-
             }
-
-
         }
 
         private void Stop_Animation_ProgressBar()
         {
             Outside_progressbar.BeginAnimation(RotateTransform.AngleProperty, null);
-
         }
+
         private void KiemTraUpdateXml()
         {
             App.Current.Dispatcher.BeginInvoke((Action)(() =>
             {
                 SetUpdatingState();
             }));
-            bool flagXML = System.IO.File.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
+            bool flagXML = SysFile.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
             if (flagXML)
             {
                 try
                 {
-                    System.IO.File.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
+                    SysFile.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
                 }
                 catch (Exception ex)
                 {
@@ -515,20 +600,21 @@ namespace AutoUpdate
                         MainNotification mainNotification = new MainNotification("Lỗi khi xóa tệp" + ex.Message);
                         mainNotification.OkButtonClicked += (senderObj, args) =>
                         {
-                            mainNotification.Close(); // Đóng cửa sổ MainNotification
+                            mainNotification.Close();
                             Thread.Sleep(100);
                             this.Close();
                         };
                         mainNotification.Show();
                     }));
-                   
-
                 }
             }
             try
             {
                 WebClient webClient = new WebClient();
-                webClient.DownloadFile(n_Configs.ServerUpdate + "update.php?vlph=" + Guid.NewGuid().ToString(), AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
+                webClient.DownloadFile(
+                    n_Configs.ServerUpdate + "update.php?vlph=" + Guid.NewGuid().ToString(),
+                    AppDomain.CurrentDomain.BaseDirectory + "\\update.xml"
+                );
                 Thread.Sleep(1000);
                 App.Current.Dispatcher.BeginInvoke((Action)(() =>
                 {
@@ -536,7 +622,6 @@ namespace AutoUpdate
                     this.lblThongTin.Content = "Bắt đầu tiến trình cập nhật...";
                 }));
                 this.DemSoLuongTapTin();
-                
             }
             catch (Exception ex2)
             {
@@ -546,18 +631,17 @@ namespace AutoUpdate
                     MainNotification mainNotification = new MainNotification("Lỗi kiểm tra tập tin [update.xml]");
                     mainNotification.OkButtonClicked += (senderObj, args) =>
                     {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
+                        mainNotification.Close();
                         Thread.Sleep(100);
                         this.Close();
                     };
                     mainNotification.Show();
                 }));
                 Thread.Sleep(2000);
-
             }
             try
             {
-                System.IO.File.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
+                SysFile.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\update.xml");
             }
             catch (Exception ex3)
             {
@@ -566,13 +650,12 @@ namespace AutoUpdate
                     MainNotification mainNotification = new MainNotification("Lỗi khi xóa tệp" + ex3.Message);
                     mainNotification.OkButtonClicked += (senderObj, args) =>
                     {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
+                        mainNotification.Close();
                         Thread.Sleep(100);
                         this.Close();
                     };
                     mainNotification.Show();
                 }));
-
             }
         }
 
@@ -590,11 +673,10 @@ namespace AutoUpdate
                     {
                         while (this.reader.MoveToNextAttribute())
                         {
-                            bool flag3 = this.reader.Name == "Name" && !Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
+                            bool flag3 = this.reader.Name == "Name"
+                                && !SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
                             if (flag3)
-                            {
-                                Directory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
-                            }
+                                SysDirectory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
                         }
                     }
                     bool flag4 = this.reader.Name == "File" && this.reader.AttributeCount > 0;
@@ -603,10 +685,7 @@ namespace AutoUpdate
                         while (this.reader.MoveToNextAttribute())
                         {
                             bool flag5 = this.reader.Name == "Name";
-                            if (flag5)
-                            {
-                                text = this.reader.Value;
-                            }
+                            if (flag5) text = this.reader.Value;
                             bool flag6 = this.reader.Name == "MD5" && text != "";
                             if (flag6)
                             {
@@ -614,14 +693,12 @@ namespace AutoUpdate
                                 {
                                     this.lblTienTrinh.Content = "Kiểm tra tập tin [" + text + "]";
                                 }));
-                                bool flag7 = System.IO.File.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
+                                bool flag7 = SysFile.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
                                 if (flag7)
                                 {
-                                    bool flag8 = GetMD5HashFromFile(AppDomain.CurrentDomain.BaseDirectory + "\\" + text) != this.reader.Value;
-                                    if (flag8)
-                                    {
-                                        this.P += 1L;
-                                    }
+                                    bool flag8 = GetMD5HashFromFile(AppDomain.CurrentDomain.BaseDirectory + "\\" + text)
+                                        != this.reader.Value;
+                                    if (flag8) this.P += 1L;
                                 }
                                 else
                                 {
@@ -654,11 +731,10 @@ namespace AutoUpdate
                     {
                         while (this.reader.MoveToNextAttribute())
                         {
-                            bool flag3 = this.reader.Name == "Name" && !Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
+                            bool flag3 = this.reader.Name == "Name"
+                                && !SysDirectory.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
                             if (flag3)
-                            {
-                                Directory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
-                            }
+                                SysDirectory.CreateDirectory(AppDomain.CurrentDomain.BaseDirectory + "\\" + this.reader.Value);
                         }
                     }
                     bool flag4 = this.reader.Name == "File" && this.reader.AttributeCount > 0;
@@ -667,76 +743,30 @@ namespace AutoUpdate
                         while (this.reader.MoveToNextAttribute())
                         {
                             bool flag5 = this.reader.Name == "Name";
-                            if (flag5)
-                            {
-                                text = this.reader.Value;
-                            }
+                            if (flag5) text = this.reader.Value;
                             bool flag6 = this.reader.Name == "MD5" && text != "";
                             if (flag6)
                             {
-                                bool flag7 = System.IO.File.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
+                                bool flag7 = SysFile.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
                                 if (flag7)
                                 {
-                                    bool flag8 = GetMD5HashFromFile(AppDomain.CurrentDomain.BaseDirectory + "\\" + text) != this.reader.Value;
+                                    bool flag8 = GetMD5HashFromFile(AppDomain.CurrentDomain.BaseDirectory + "\\" + text)
+                                        != this.reader.Value;
                                     if (flag8)
                                     {
-                                        bool flag9 = System.IO.File.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
-                                        if (flag9)
-                                        {
-                                            System.IO.File.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
-                                        }
+                                        if (SysFile.Exists(AppDomain.CurrentDomain.BaseDirectory + "\\" + text))
+                                            SysFile.Delete(AppDomain.CurrentDomain.BaseDirectory + "\\" + text);
                                         try
                                         {
-                                            HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(n_Configs.ServerUpdate + "files/" + text);
-                                            HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                                            long contentLength = httpWebResponse.ContentLength;
-                                            ChangeTextsSafe method = new ChangeTextsSafe(this.ChangeTexts);
-                                            Dispatcher.Invoke(method, new object[]
-                                            {
-                                                contentLength,
-                                                0
-                                            });
-                                            FileStream fileStream = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "\\" + text, FileMode.Create);
-                                            App.Current.Dispatcher.BeginInvoke((Action)(() =>
-                                            {
-                                                this.lblTienTrinh.Content = "Đang tải về tập tin [" + text + "]";
-                                            }));
-                                            for (; ; )
-                                            {
-                                                byte[] buffer = new byte[4096];
-                                                int num = httpWebResponse.GetResponseStream().Read(buffer, 0, 4096);
-                                                this.num2 += (long)num;
-                                                short num2 = (short)Math.Round((double)(this.num2 * 100L) / (double)contentLength);
-                                                Dispatcher.Invoke(method, new object[]
-                                                {
-                                                    contentLength,
-                                                    num2
-                                                });
-                                                bool flag10 = num == 0;
-                                                if (flag10)
-                                                {
-                                                    break;
-                                                }
-                                                fileStream.Write(buffer, 0, num);
-                                            }
-                                            this.H += 1L;
-                                            this.num2 = 0L;
-                                            httpWebResponse.GetResponseStream().Close();
-                                            fileStream.Close();
-                                            text = "";
+                                            DownloadFileWithProgress(text);
                                         }
                                         catch (Exception ex)
                                         {
                                             App.Current.Dispatcher.Invoke((Action)(() =>
                                             {
-                                                MainNotification mainNotification = new MainNotification("Lỗi Kiểm Tra Tệp Tin\n" + ex.Message);
-                                                mainNotification.OkButtonClicked += (senderObj, args) =>
-                                                {
-                                                    mainNotification.Close(); // Đóng cửa sổ MainNotification
-                                                    Thread.Sleep(100);
-                                                    this.Close();
-                                                };
-                                                mainNotification.Show();
+                                                MainNotification mn = new MainNotification("Lỗi Kiểm Tra Tệp Tin\n" + ex.Message);
+                                                mn.OkButtonClicked += (s, a) => { mn.Close(); Thread.Sleep(100); this.Close(); };
+                                                mn.Show();
                                             }));
                                         }
                                     }
@@ -745,59 +775,16 @@ namespace AutoUpdate
                                 {
                                     try
                                     {
-                                        HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(n_Configs.ServerUpdate + "files/" + text);
-                                        HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                                        long contentLength2 = httpWebResponse.ContentLength;
-                                        ChangeTextsSafe method2 = new ChangeTextsSafe(this.ChangeTexts);
-                                        Dispatcher.Invoke(method2, new object[]
-                                        {
-                                            contentLength2,
-                                            0
-                                        });
-                                        FileStream fileStream2 = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "\\" + text, FileMode.Create);
-                                        App.Current.Dispatcher.BeginInvoke((Action)(() =>
-                                        {
-                                            this.lblTienTrinh.Content = "Đang tải về tập tin [" + text + "]";
-                                        }));
-                                        for (; ; )
-                                        {
-                                            byte[] buffer2 = new byte[4096];
-                                            int num3 = httpWebResponse.GetResponseStream().Read(buffer2, 0, 4096);
-                                            this.num6 += (long)num3;
-                                            short num4 = (short)Math.Round((double)(this.num6 * 100L) / (double)contentLength2);
-                                            Dispatcher.Invoke(method2, new object[]
-                                            {
-                                                contentLength2,
-                                                num4
-                                            });
-                                            bool flag11 = num3 == 0;
-                                            if (flag11)
-                                            {
-                                                break;
-                                            }
-                                            fileStream2.Write(buffer2, 0, num3);
-                                        }
-                                        this.H += 1L;
-                                        this.num6 = 0L;
-                                        httpWebResponse.GetResponseStream().Close();
-                                        fileStream2.Close();
-                                        text = "";
+                                        DownloadFileWithProgress(text);
                                     }
                                     catch (Exception ex2)
                                     {
-
                                         App.Current.Dispatcher.Invoke((Action)(() =>
                                         {
-                                            MainNotification mainNotification = new MainNotification("Lỗi tải về tập tin [" + text + "]\n" + ex2.Message);
-                                            mainNotification.OkButtonClicked += (senderObj, args) =>
-                                            {
-                                                mainNotification.Close(); // Đóng cửa sổ MainNotification
-                                                Thread.Sleep(100);
-                                                this.Close();
-                                            };
-                                            mainNotification.Show();
+                                            MainNotification mn = new MainNotification("Lỗi tải về tập tin [" + text + "]\n" + ex2.Message);
+                                            mn.OkButtonClicked += (s, a) => { mn.Close(); Thread.Sleep(100); this.Close(); };
+                                            mn.Show();
                                         }));
-
                                     }
                                 }
                             }
@@ -807,52 +794,112 @@ namespace AutoUpdate
             }
             this.reader.Close();
             DownloadCompleteSafe method3 = new DownloadCompleteSafe(this.DownloadComplete);
-            Dispatcher.Invoke(method3, new object[]
+            Dispatcher.Invoke(method3, new object[] { false });
+        }
+
+        // =====================================================================
+        // FIX #5: Hàm download dùng HTTPS với progress
+        // =====================================================================
+        private void DownloadFileWithProgress(string fileName)
+        {
+            // Thử HTTPS trước, fallback về HTTP nếu lỗi
+            string[] urlPrefixes = {
+                n_Configs.ServerUpdate.Replace("http://", "https://"),
+                n_Configs.ServerUpdate
+            };
+
+            Exception lastException = null;
+            foreach (string prefix in urlPrefixes)
             {
-                false
-            });
+                try
+                {
+                    string url = prefix + "files/" + fileName;
+                    HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+                    httpWebRequest.Timeout = 30000;
+                    HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                    long contentLength = httpWebResponse.ContentLength;
+                    ChangeTextsSafe method = new ChangeTextsSafe(this.ChangeTexts);
+                    Dispatcher.Invoke(method, new object[] { contentLength, 0 });
+
+                    SysStream fileStream = new SysStream(
+                        AppDomain.CurrentDomain.BaseDirectory + "\\" + fileName,
+                        System.IO.FileMode.Create
+                    );
+
+                    App.Current.Dispatcher.BeginInvoke((Action)(() =>
+                    {
+                        this.lblTienTrinh.Content = "Đang tải về tập tin [" + fileName + "]";
+                    }));
+
+                    this.num2 = 0;
+                    for (;;)
+                    {
+                        byte[] buffer = new byte[4096];
+                        int num = httpWebResponse.GetResponseStream().Read(buffer, 0, 4096);
+                        this.num2 += (long)num;
+                        short num2 = (short)Math.Round((double)(this.num2 * 100L) / (double)contentLength);
+                        Dispatcher.Invoke(method, new object[] { contentLength, num2 });
+                        if (num == 0) break;
+                        fileStream.Write(buffer, 0, num);
+                    }
+                    this.H += 1L;
+                    this.num2 = 0L;
+                    httpWebResponse.GetResponseStream().Close();
+                    fileStream.Close();
+                    return; // Thành công, thoát khỏi vòng lặp
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    // Thử URL tiếp theo
+                }
+            }
+            // Nếu cả 2 URL đều lỗi
+            if (lastException != null) throw lastException;
         }
 
         public static string GetMD5HashFromFile(string filename)
         {
             string result;
-            using (MD5CryptoServiceProvider md5CryptoServiceProvider = new MD5CryptoServiceProvider())
+            using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
             {
-                byte[] array = md5CryptoServiceProvider.ComputeHash(System.IO.File.ReadAllBytes(filename));
-                StringBuilder stringBuilder = new StringBuilder();
+                byte[] array = md5.ComputeHash(SysFile.ReadAllBytes(filename));
+                StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < array.Length; i++)
-                {
-                    stringBuilder.Append(array[i].ToString("x2"));
-                }
-                result = stringBuilder.ToString();
+                    sb.Append(array[i].ToString("x2"));
+                result = sb.ToString();
             }
             return result;
         }
 
         private void CreateShortcut()
         {
-            string shortcutLocation = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), Properties.Settings.Default.ShortCut_Name + ".lnk");
-            WshShell shell = new WshShell();
-            IWshShortcut shortcutDesktop = (IWshShortcut)shell.CreateShortcut(shortcutLocation);
+            string shortcutLocation = SysPath.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                Properties.Settings.Default.ShortCut_Name + ".lnk"
+            );
+            IWshRuntimeLibrary.WshShell shell = new IWshRuntimeLibrary.WshShell();
+            IWshRuntimeLibrary.IWshShortcut shortcutDesktop = (IWshRuntimeLibrary.IWshShortcut)shell.CreateShortcut(shortcutLocation);
             shortcutDesktop.Description = Properties.Settings.Default.ShortCut_Name;
             shortcutDesktop.WorkingDirectory = DirApp;
             shortcutDesktop.TargetPath = AppDomain.CurrentDomain.BaseDirectory + "AutoUpdate.exe";
             shortcutDesktop.Save();
-            string shortcutLocationStartMenu = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), Properties.Settings.Default.ShortCut_Name + ".lnk");
-            IWshShortcut shortcutStartMenu = (IWshShortcut)shell.CreateShortcut(shortcutLocationStartMenu);
+
+            string shortcutLocationStartMenu = SysPath.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
+                Properties.Settings.Default.ShortCut_Name + ".lnk"
+            );
+            IWshRuntimeLibrary.IWshShortcut shortcutStartMenu = (IWshRuntimeLibrary.IWshShortcut)shell.CreateShortcut(shortcutLocationStartMenu);
             shortcutStartMenu.Description = Properties.Settings.Default.ShortCut_Name;
             shortcutStartMenu.WorkingDirectory = DirApp;
             shortcutStartMenu.TargetPath = AppDomain.CurrentDomain.BaseDirectory + "AutoUpdate.exe";
             shortcutStartMenu.Save();
         }
 
-        
-
         private void CheckPort(string Ip, int Port, Label txtStatus)
         {
             TcpClient TcpScan = new TcpClient();
             var result = TcpScan.BeginConnect(Ip, Port, null, null);
-
             var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(1));
             if (!success)
             {
@@ -865,6 +912,7 @@ namespace AutoUpdate
                 txtStatus.Content = "Đang hoạt động";
             }
         }
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             switch (new Random().Next(1, 5))
@@ -910,26 +958,11 @@ namespace AutoUpdate
             {
                 if (ImgData[i, 0] != null)
                 {
-                    if (i == 0)
-                    {
-                        slide1 = ImgData[i, 0];
-                    }
-                    else if (i == 1)
-                    {
-                        slide2 = ImgData[i, 0];
-                    }
-                    else if (i == 2)
-                    {
-                        slide3 = ImgData[i, 0];
-                    }
-                    else if (i == 3)
-                    {
-                        slide4 = ImgData[i, 0];
-                    }
-                    else if (i == 4)
-                    {
-                        slide5 = ImgData[i, 0];
-                    }
+                    if (i == 0) slide1 = ImgData[i, 0];
+                    else if (i == 1) slide2 = ImgData[i, 0];
+                    else if (i == 2) slide3 = ImgData[i, 0];
+                    else if (i == 3) slide4 = ImgData[i, 0];
+                    else if (i == 4) slide5 = ImgData[i, 0];
                 }
             }
         }
@@ -940,79 +973,37 @@ namespace AutoUpdate
             {
                 System.Net.WebRequest myRequestImg = System.Net.WebRequest.Create(channel);
                 System.Net.WebResponse myResponseImg = myRequestImg.GetResponse();
-
                 System.IO.Stream rssStreamImg = myResponseImg.GetResponseStream();
                 System.Xml.XmlDocument rssDocImg = new System.Xml.XmlDocument();
-
                 rssDocImg.Load(rssStreamImg);
-
                 System.Xml.XmlNodeList rssItemsImg = rssDocImg.SelectNodes("rss/channel/item");
-
                 String[,] tempRssImgData = new String[100, 3];
-
                 for (int i = 0; i < rssItemsImg.Count; i++)
                 {
                     System.Xml.XmlNode rssNodeImg;
-
                     rssNodeImg = rssItemsImg.Item(i).SelectSingleNode("image");
-                    if (rssNodeImg != null)
-                    {
-                        tempRssImgData[i, 0] = rssNodeImg.InnerText;
-                    }
-                    else
-                    {
-                        tempRssImgData[i, 0] = "";
-                    }
-
+                    tempRssImgData[i, 0] = rssNodeImg != null ? rssNodeImg.InnerText : "";
                     rssNodeImg = rssItemsImg.Item(i).SelectSingleNode("pubDate");
-                    if (rssNodeImg != null)
-                    {
-                        tempRssImgData[i, 1] = rssNodeImg.InnerText;
-                    }
-                    else
-                    {
-                        tempRssImgData[i, 1] = "";
-                    }
-
+                    tempRssImgData[i, 1] = rssNodeImg != null ? rssNodeImg.InnerText : "";
                     rssNodeImg = rssItemsImg.Item(i).SelectSingleNode("link");
-                    if (rssNodeImg != null)
-                    {
-                        tempRssImgData[i, 2] = rssNodeImg.InnerText;
-                    }
-                    else
-                    {
-                        tempRssImgData[i, 2] = "";
-                    }
-
+                    tempRssImgData[i, 2] = rssNodeImg != null ? rssNodeImg.InnerText : "";
                 }
                 return tempRssImgData;
             }
             catch (Exception ex4)
             {
                 MessageBox.Show($"Xảy ra lỗi: {ex4.Message}", "Lỗi");
-                String[,] tempRssImgData = new String[100, 3];
-                return tempRssImgData;
+                return new String[100, 3];
             }
         }
+
         private void SetRSS()
         {
-            //((OutlinedTextBlock)News1.Content).Text = "News1Content";
-            News1.Content = "";
-            News2.Content = "";
-            News3.Content = "";
-            News4.Content = "";
-            ////////////////
-            Event1.Content = "";
-            Event2.Content = "";
-            Event3.Content = "";
-            /////////////////
-            News1.Visibility = Visibility.Hidden;
-            News2.Visibility = Visibility.Hidden;
-            News3.Visibility = Visibility.Hidden;
-            News4.Visibility = Visibility.Hidden;
-            //////////////////////
-            Event1.Visibility = Visibility.Hidden;
-            Event2.Visibility = Visibility.Hidden;
+            News1.Content = ""; News2.Content = ""; News3.Content = ""; News4.Content = "";
+            Event1.Content = ""; Event2.Content = ""; Event3.Content = "";
+            News1.Visibility = Visibility.Hidden; News2.Visibility = Visibility.Hidden;
+            News3.Visibility = Visibility.Hidden; News4.Visibility = Visibility.Hidden;
+            Event1.Visibility = Visibility.Hidden; Event2.Visibility = Visibility.Hidden;
             Event3.Visibility = Visibility.Hidden;
 
             string NewsLink = ((n_Configs.News) + "?vlph=" + Guid.NewGuid().ToString());
@@ -1021,43 +1012,13 @@ namespace AutoUpdate
             {
                 if (rssData[i, 0] != null)
                 {
-                    if (i == 0)
-                    {
-                        News1.Visibility = Visibility.Visible;
-                        //string News1Content = "       " + rssData[i, 0];
-                        //((OutlinedTextBlock)News1.Content).Text = ((OutlinedTextBlock)News1.Content).Text.Replace("News1Content", News1Content);
-                        News1.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 1)
-                    {
-                        News2.Visibility = Visibility.Visible;
-                        News2.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 2)
-                    {
-                        News3.Visibility = Visibility.Visible;
-                        News3.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 3)
-                    {
-                        News4.Visibility = Visibility.Visible;
-                        News4.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 4)
-                    {
-                        Event1.Visibility = Visibility.Visible;
-                        Event1.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 5)
-                    {
-                        Event2.Visibility = Visibility.Visible;
-                        Event2.Content = "      " + rssData[i, 0];
-                    }
-                    else if (i == 6)
-                    {
-                        Event3.Visibility = Visibility.Visible;
-                        Event3.Content = "      " + rssData[i, 0];
-                    }
+                    if (i == 0) { News1.Visibility = Visibility.Visible; News1.Content = "      " + rssData[i, 0]; }
+                    else if (i == 1) { News2.Visibility = Visibility.Visible; News2.Content = "      " + rssData[i, 0]; }
+                    else if (i == 2) { News3.Visibility = Visibility.Visible; News3.Content = "      " + rssData[i, 0]; }
+                    else if (i == 3) { News4.Visibility = Visibility.Visible; News4.Content = "      " + rssData[i, 0]; }
+                    else if (i == 4) { Event1.Visibility = Visibility.Visible; Event1.Content = "      " + rssData[i, 0]; }
+                    else if (i == 5) { Event2.Visibility = Visibility.Visible; Event2.Content = "      " + rssData[i, 0]; }
+                    else if (i == 6) { Event3.Visibility = Visibility.Visible; Event3.Content = "      " + rssData[i, 0]; }
                 }
             }
         }
@@ -1068,74 +1029,32 @@ namespace AutoUpdate
             {
                 System.Net.WebRequest myRequest = System.Net.WebRequest.Create(channel);
                 System.Net.WebResponse myResponse = myRequest.GetResponse();
-
                 System.IO.Stream rssStream = myResponse.GetResponseStream();
                 System.Xml.XmlDocument rssDoc = new System.Xml.XmlDocument();
-
                 rssDoc.Load(rssStream);
-
                 System.Xml.XmlNodeList rssItems = rssDoc.SelectNodes("rss/channel/item");
-
                 String[,] tempRssData = new String[100, 3];
-
                 for (int i = 0; i < rssItems.Count; i++)
                 {
                     System.Xml.XmlNode rssNode;
-
                     rssNode = rssItems.Item(i).SelectSingleNode("content");
-                    if (rssNode != null)
-                    {
-                        tempRssData[i, 0] = rssNode.InnerText;
-                    }
-                    else
-                    {
-                        tempRssData[i, 0] = "";
-                    }
-
+                    tempRssData[i, 0] = rssNode != null ? rssNode.InnerText : "";
                     rssNode = rssItems.Item(i).SelectSingleNode("pubDate");
-                    if (rssNode != null)
-                    {
-                        tempRssData[i, 1] = rssNode.InnerText;
-                    }
-                    else
-                    {
-                        tempRssData[i, 1] = "";
-                    }
-
+                    tempRssData[i, 1] = rssNode != null ? rssNode.InnerText : "";
                     rssNode = rssItems.Item(i).SelectSingleNode("link");
-                    if (rssNode != null)
-                    {
-                        tempRssData[i, 2] = rssNode.InnerText;
-                    }
-                    else
-                    {
-                        tempRssData[i, 2] = "";
-                    }
-
+                    tempRssData[i, 2] = rssNode != null ? rssNode.InnerText : "";
                 }
                 return tempRssData;
             }
             catch (Exception ex5)
             {
-
                 App.Current.Dispatcher.Invoke((Action)(() =>
                 {
-                    MainNotification mainNotification = new MainNotification($"Xảy ra lỗi: {ex5.Message}");
-                    mainNotification.OkButtonClicked += (senderObj, args) =>
-                    {
-                        mainNotification.Close(); // Đóng cửa sổ MainNotification
-                        Thread.Sleep(100);
-                        this.Close();
-                    };
-                    mainNotification.Show();
+                    MainNotification mn = new MainNotification($"Xảy ra lỗi: {ex5.Message}");
+                    mn.OkButtonClicked += (s, a) => { mn.Close(); Thread.Sleep(100); this.Close(); };
+                    mn.Show();
                 }));
-
-
-
-
-
-                String[,] tempRssData = new String[100, 3];
-                return tempRssData;
+                return new String[100, 3];
             }
         }
 
@@ -1143,42 +1062,29 @@ namespace AutoUpdate
         {
             Start_Animation_ProgressBar();
             this.InSide_login.Visibility = Visibility.Collapsed;
-
             this.btnLogin.IsEnabled = false;
             this.btnLogin.Visibility = Visibility.Collapsed;
         }
 
         public void SetTryAgainState()
         {
-
             this.btnLogin.IsEnabled = false;
             this.btnLogin.Visibility = Visibility.Collapsed;
-
         }
 
         public void SetUpdateCompletedState()
         {
             this.InSide_login.Visibility = Visibility.Visible;
             MyImage.Visibility = Visibility.Collapsed;
-
             this.btnThulai.IsEnabled = true;
             this.btnThulai.Visibility = Visibility.Visible;
-
             this.btnLogin.IsEnabled = true;
             this.btnLogin.Visibility = Visibility.Visible;
-
         }
 
         private void MainBgr_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left)
-            {
-                m_IsPressed = true;
-            }
-            else
-            {
-                m_IsPressed = false;
-            }
+            m_IsPressed = e.ChangedButton == MouseButton.Left;
         }
 
         private void MainBgr_PreviewMouseUp(object sender, MouseButtonEventArgs e)
@@ -1188,10 +1094,7 @@ namespace AutoUpdate
 
         private void MainBgr_MouseDown(object sender, MouseEventArgs e)
         {
-            if (m_IsPressed)
-            {
-                this.DragMove();
-            }
+            if (m_IsPressed) this.DragMove();
         }
 
         public delegate void ChangeTextsSafe(double length, double percent);
@@ -1208,8 +1111,7 @@ namespace AutoUpdate
 
         private void BtnAutotrain_MouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
-
-            if (System.IO.File.Exists(this.n_Configs.AutoTrain))
+            if (SysFile.Exists(this.n_Configs.AutoTrain))
             {
                 var autotrain = new ProcessStartInfo(this.n_Configs.AutoTrain);
                 autotrain.WorkingDirectory = System.AppDomain.CurrentDomain.BaseDirectory;
@@ -1217,20 +1119,16 @@ namespace AutoUpdate
             }
             else
             {
-
-                MainNotification mainNotification = new MainNotification("Không tìm thấy file " + this.n_Configs.AutoTrain + ". Lỗi sai đường dẫn trong thư mục game");
-                mainNotification.OkButtonClicked += (senderObj, args) =>
-                {
-                    mainNotification.Close(); // Đóng cửa sổ MainNotification
-                    this.IsEnabled = true;
-                };
-                mainNotification.Show();
+                MainNotification mn = new MainNotification(
+                    "Không tìm thấy file " + this.n_Configs.AutoTrain + ". Lỗi sai đường dẫn trong thư mục game");
+                mn.OkButtonClicked += (s, a) => { mn.Close(); this.IsEnabled = true; };
+                mn.Show();
             }
         }
 
         private void BtnAutoPK_MouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
-            if (System.IO.File.Exists("AutoPk\\" + this.n_Configs.AutoPK))
+            if (SysFile.Exists("AutoPk\\" + this.n_Configs.AutoPK))
             {
                 var autopk = new ProcessStartInfo(this.n_Configs.AutoPK);
                 autopk.WorkingDirectory = System.AppDomain.CurrentDomain.BaseDirectory + "AutoPk\\";
@@ -1238,21 +1136,20 @@ namespace AutoUpdate
             }
             else
             {
-                MainNotification mainNotification = new MainNotification("Không tìm thấy file " + this.n_Configs.AutoPK + ". Lỗi sai đường dẫn trong thư mục game");
-                mainNotification.OkButtonClicked += (senderObj, args) =>
-                {
-                    mainNotification.Close(); // Đóng cửa sổ MainNotification
-                    this.IsEnabled = true;
-                };
-                mainNotification.Show();
-
+                MainNotification mn = new MainNotification(
+                    "Không tìm thấy file " + this.n_Configs.AutoPK + ". Lỗi sai đường dẫn trong thư mục game");
+                mn.OkButtonClicked += (s, a) => { mn.Close(); this.IsEnabled = true; };
+                mn.Show();
             }
         }
+
         private void Slideshow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (slidelink == null)
             {
-                MessageBox.Show("Chưa tìm thấy đường dẫn. Vui lòng thử lại", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                MessageBox.Show("Chưa tìm thấy đường dẫn. Vui lòng thử lại", "Thông báo",
+                    MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                return;
             }
             Process.Start(slidelink);
         }
@@ -1264,124 +1161,38 @@ namespace AutoUpdate
             {
                 ni.Visible = true;
                 Hide();
-                ni.ShowBalloonTip(1000, "Thông Báo", "Đang chạy chế độ ẩn!\n\nBấm vào biểu tượng ở thanh tác vụ để mở.", System.Windows.Forms.ToolTipIcon.Info);
+                ni.ShowBalloonTip(1000, "Thông Báo",
+                    "Đang chạy chế độ ẩn!\n\nBấm vào biểu tượng ở thanh tác vụ để mở.",
+                    System.Windows.Forms.ToolTipIcon.Info);
             }
         }
 
         private void News1_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[0, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[0, 2]);
-        }
-
+        { if (rssData[0, 2] != null) Process.Start(rssData[0, 2]); }
         private void News2_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[1, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[1, 2]);
-        }
-
+        { if (rssData[1, 2] != null) Process.Start(rssData[1, 2]); }
         private void News3_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[2, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[2, 2]);
-        }
-
+        { if (rssData[2, 2] != null) Process.Start(rssData[2, 2]); }
         private void News4_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[3, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[3, 2]);
-        }
-
+        { if (rssData[3, 2] != null) Process.Start(rssData[3, 2]); }
         private void Event1_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[4, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[4, 2]);
-        }
-
+        { if (rssData[4, 2] != null) Process.Start(rssData[4, 2]); }
         private void Event2_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[5, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[5, 2]);
-        }
-
+        { if (rssData[5, 2] != null) Process.Start(rssData[5, 2]); }
         private void Event3_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (rssData[6, 2] == null)
-            {
-                return;
-            }
-            Process.Start(rssData[6, 2]);
-        }
+        { if (rssData[6, 2] != null) Process.Start(rssData[6, 2]); }
 
         private void BtnHome_MouseLeftButtonDown(object sender, RoutedEventArgs e)
-        {
-            Process.Start(this.n_Configs.WebHome);
-        }
-
+        { Process.Start(this.n_Configs.WebHome); }
         private void BtnReg_MouseLeftButtonDown(object sender, RoutedEventArgs e)
-        {
-            Process.Start(this.n_Configs.WebRegister);
-        }
-
+        { Process.Start(this.n_Configs.WebRegister); }
         private void BtnSupport_MouseLeftButtonDown(object sender, RoutedEventArgs e)
-        {
-            Process.Start(this.n_Configs.WebSupport);
-        }
-
+        { Process.Start(this.n_Configs.WebSupport); }
         private void BtnCom_MouseLeftButtonDown(object sender, RoutedEventArgs e)
-        {
-            Process.Start(this.n_Configs.WebCom);
-        }
-        private void Runconfig()
-        {
-            string pathcf = Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase) + "\\config.exe";
-            try
-            {
-                //this.DelFolder();
-                //Process.Start(AppDomain.CurrentDomain.BaseDirectory + this.n_Configs.FileGame);
-
-                //Process runGame = Process.Start(Path.GetDirectoryName(Assembly.GetExecutingAssembly().GetName().CodeBase) +"\\" + this.n_Configs.FileGame);
-                Process runGame = Process.Start(pathcf);
-                //System.Diagnostics.Process.Start(System.Windows.Forms.Application.StartupPath + "\\" + this.n_Configs.FileGame, "Võ Lâm Tranh Bá");
-                //System.Diagnostics.Process.Start(Path.Combine(DirApp, "Game.exe"));
-            }
-            catch (Exception ex)
-            {
-                App.Current.Dispatcher.Invoke((Action)(() =>
-                {
-                    MainNotification mainNotification = new MainNotification(ex.Message + " Path: " + pathcf);
-                    mainNotification.OkButtonClicked += (senderObj, args) =>
-                    {
-                        mainNotification.Close(); 
-                        this.IsEnabled = true;
-                    };
-                    mainNotification.Show();
-                }));
-
-            }
-        }
+        { Process.Start(this.n_Configs.WebCom); }
 
         private void BtnConfig_MouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
-           // new Thread(new ThreadStart(this.Runconfig)).Start();
             isMainWindowEnabled = false;
             GameConfig OptionForm = new GameConfig();
             OptionForm.Owner = this;
@@ -1390,13 +1201,9 @@ namespace AutoUpdate
             OptionForm.Closed += (senderObj, args) =>
             {
                 isMainWindowEnabled = true;
-                if (isMainWindowEnabled)
-                {
-                    this.IsEnabled = true;
-                }
+                if (isMainWindowEnabled) this.IsEnabled = true;
             };
         }
-
 
         private void BtnThulai_MouseLeftButtonDown(object sender, RoutedEventArgs e)
         {
@@ -1405,44 +1212,22 @@ namespace AutoUpdate
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-
-            MainNotification mainNotification = new MainNotification("Bạn có chắc chắn muốn thoát ?");
-            
-            mainNotification.OkButtonClicked += (senderObj, args) =>
+            MainNotification mn = new MainNotification("Bạn có chắc chắn muốn thoát ?");
+            mn.OkButtonClicked += (senderObj, args) =>
             {
-                
-                mainNotification.Close(); // Đóng cửa sổ MainNotification
+                mn.Close();
                 this.IsEnabled = true;
                 Thread.Sleep(100);
                 this.Close();
             };
-            mainNotification.Show();
+            mn.Show();
             this.IsEnabled = false;
-            /*{
-                MessageBoxResult dialogResult = MessageBox.Show("Bạn có chắc chắn muốn thoát?", "Thông Báo", MessageBoxButton.YesNo);
-                bool flag = dialogResult == MessageBoxResult.Yes;
-                if (flag)
-                {
-                    Thread.Sleep(100);
-                    Environment.Exit(Environment.ExitCode);
-                    return;
-                }
-                else
-                {
-                    bool flag2 = dialogResult == MessageBoxResult.No;
-                    if (flag2)
-                    {
-                    }
-                }
-            }*/
         }
 
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)
         {
             Minimize();
         }
-
-
 
         public delegate void DownloadCompleteSafe(bool cancelled);
     }
